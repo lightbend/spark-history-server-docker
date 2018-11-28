@@ -10,6 +10,5 @@ The [Cloud Storage connector](https://cloud.google.com/dataproc/docs/concepts/co
 
 ### S3
 
-To-do
-
+The [hadoop-aws](https://hadoop.apache.org/docs/current/hadoop-aws/tools/hadoop-aws/index.html) is included in the image to support AWS S3 integration
  
