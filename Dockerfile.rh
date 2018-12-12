@@ -1,0 +1,16 @@
+# syntax=docker/dockerfile:experimental
+
+ARG SPARK_IMAGE=gcr.io/spark-operator/spark:v2.4.0
+FROM ${SPARK_IMAGE}
+
+RUN apk add --no-cache tini
+
+RUN chmod -R u+x /tmp
+
+# Set up dependencies for Google Cloud Storage access.
+# Add the connector jar needed to access Google Cloud Storage using the Hadoop FileSystem API.
+ADD https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-latest-hadoop2.jar $SPARK_HOME/jars
+
+COPY entrypoint.sh /usr/bin/
+USER 185
+ENTRYPOINT ["/usr/bin/entrypoint.sh"]
