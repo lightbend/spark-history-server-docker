@@ -13,6 +13,13 @@ enableIAM=
 accessKeyName=
 secretKeyName=
 
+enableWASBS=
+storageAccountName=
+containerName=
+sasKeyMode=
+sasKeyName=
+storageAccountKeyName=
+
 eventsDir=
 
 function usage {
@@ -25,6 +32,10 @@ function usage {
   --gcs gcloudkey                                       Enable GCS and provide the Google Cloud key
   --s3 enableIAM accessKeyName secretKeyName            Enable S3 and configure whether IAM is enabled,
                                                         the accessKeyName and secretKeyName
+  --wasbs storageAccountName containerName sasKeyMode \ Enable WASBS and configure its params.
+          sasKeyName(or storageAccountKeyName)          If sasKeyMode=true - provide sasKeyName as last arg,
+                                                        else provide storageAccountKeyName as last arg
+  --events-dir events-dir                               Set events dir
   -h | --help                                           Prints this message.
 EOF
 }
@@ -59,7 +70,26 @@ function parse_args {
         shift 4
         continue
       else
-        printf '"--enableS3" require three non-empty option arguments.\n'
+        printf '"--s3" require three non-empty option arguments.\n'
+        usage
+        exit 1
+      fi
+      ;;
+      --wasbs)
+      if [[ -n "$5" ]]; then
+        enableWASBS=true
+        storageAccountName=$2
+        containerName=$3
+        sasKeyMode=$4
+        if [ "$sasKeyMode" == "true" ];
+          sasKeyName=$5
+        else
+          storageAccountKeyName=$5
+        fi
+        shift 5
+        continue
+      else
+        printf '"--wasbs" require four non-empty option arguments.\n'
         usage
         exit 1
       fi
@@ -135,6 +165,20 @@ elif [[ "$enableS3" == "true" ]]; then
       -Dspark.hadoop.fs.s3a.access.key=$(cat /etc/secrets/${accessKeyName}) \
       -Dspark.hadoop.fs.s3a.secret.key=$(cat /etc/secrets/${secretKeyName})";
     fi;
+elif [ "$enableWASBS" == "true" ]; then
+  export SPARK_HISTORY_OPTS="$SPARK_HISTORY_OPTS \
+    -Dspark.history.fs.logDirectory=$eventsDir \
+    -Dspark.hadoop.fs.defaultFS=wasbs://$containerName@$storageAccountName.blob.core.windows.net \
+    -Dspark.hadoop.fs.wasbs.impl=org.apache.hadoop.fs.azure.NativeAzureFileSystem \
+    -Dspark.hadoop.fs.AbstractFileSystem.wasbs.impl=org.apache.hadoop.fs.azure.Wasbs";
+  if [ "$sasKeyMode" == "true" ]; then
+    export SPARK_HISTORY_OPTS="$SPARK_HISTORY_OPTS \
+      -Dspark.hadoop.fs.azure.local.sas.key.mode=true \
+      -Dspark.hadoop.fs.azure.sas.$containerName.$storageAccountName.blob.core.windows.net=$(cat /etc/secrets/${sasKeyName})";
+  else
+    export SPARK_HISTORY_OPTS="$SPARK_HISTORY_OPTS \
+      -Dspark.hadoop.fs.azure.account.key.$storageAccountName.blob.core.windows.net=$(cat /etc/secrets/${storageAccountKeyName})";
+  fi;
 else
     export SPARK_HISTORY_OPTS="$SPARK_HISTORY_OPTS \
     -Dspark.history.fs.logDirectory=$eventsDir";
