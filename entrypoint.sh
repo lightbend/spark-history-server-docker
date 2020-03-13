@@ -81,7 +81,7 @@ function parse_args {
         storageAccountName=$2
         containerName=$3
         sasKeyMode=$4
-        if [ "$sasKeyMode" == "true" ];
+        if [ "$sasKeyMode" == "true" ]; then
           sasKeyName=$5
         else
           storageAccountKeyName=$5
